@@ -1,0 +1,227 @@
+# Generate the Xcode project with:  xcodegen generate
+# The only manual step is your signing team: set DEVELOPMENT_TEAM in
+# Config/Signing.xcconfig (or pick the team in Xcode's Signing & Capabilities).
+name: InternshipKanban
+
+options:
+  bundleIdPrefix: com.sakshamrathi
+  deploymentTarget:
+    macOS: "14.0"
+    iOS: "18.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    SWIFT_EMIT_LOC_STRINGS: NO
+    # The App Group is Team-ID-prefixed (not "group.…"): on macOS 15+ that
+    # avoids the "would like to access data from other apps" prompt for
+    # builds outside the App Store. Both targets use exactly this value.
+    KANBAN_APP_GROUP: $(DEVELOPMENT_TEAM).com.sakshamrathi.InternshipKanban
+
+packages:
+  KanbanCore:
+    path: Packages/KanbanCore
+
+targets:
+  InternshipKanban:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/Sources
+      - path: App/Assets.xcassets
+      - path: Shared
+    dependencies:
+      - package: KanbanCore
+      - target: InternshipKanbanWidget
+        embed: true
+        codeSign: true
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: Kanban Board
+        CFBundleDisplayName: Kanban Board
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSApplicationCategoryType: public.app-category.productivity
+        NSHumanReadableCopyright: Personal project
+        KanbanAppGroupIdentifier: $(KANBAN_APP_GROUP)
+        CFBundleURLTypes:
+          - CFBundleURLName: com.sakshamrathi.InternshipKanban
+            CFBundleURLSchemes: [internshipkanban]
+    entitlements:
+      path: App/InternshipKanban.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - $(KANBAN_APP_GROUP)
+        com.apple.security.files.user-selected.read-write: true
+    settings:
+      base:
+        PRODUCT_NAME: Kanban Board
+        PRODUCT_MODULE_NAME: InternshipKanban
+        PRODUCT_BUNDLE_IDENTIFIER: com.sakshamrathi.InternshipKanban
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        COMBINE_HIDPI_IMAGES: YES
+        ENABLE_PREVIEWS: YES
+
+  InternshipKanbanWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Widget/Sources
+      - path: Shared
+        excludes: ["UI/**"]
+    dependencies:
+      - package: KanbanCore
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleName: Kanban Board
+        CFBundleDisplayName: Kanban Board
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        KanbanAppGroupIdentifier: $(KANBAN_APP_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/InternshipKanbanWidget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - $(KANBAN_APP_GROUP)
+    settings:
+      base:
+        PRODUCT_NAME: InternshipKanbanWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.sakshamrathi.InternshipKanban.Widget
+        SKIP_INSTALL: YES
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: WidgetBackground
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
+
+  # iPhone. Its own board for now (no sync); App Groups on iOS must start with "group.".
+  KanbanBoardiOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: iOS/Sources
+      - path: iOS/Assets.xcassets
+      - path: iOS/Palette.xcassets   # Apple system colours (scripts/generate_palette_ios.py)
+      - path: Shared
+        excludes: ["Palette.xcassets"]
+    dependencies:
+      - package: KanbanCore
+      - target: KanbanBoardiOSWidget
+        embed: true
+        codeSign: true
+    info:
+      path: iOS/Info.plist
+      properties:
+        CFBundleName: Kanban Board
+        CFBundleDisplayName: Kanban Board
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        KanbanAppGroupIdentifier: group.com.sakshamrathi.KanbanBoard
+        UILaunchScreen:
+          UIColorName: Background
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIApplicationSupportsIndirectInputEvents: true
+        LSSupportsOpeningDocumentsInPlace: false
+        CFBundleURLTypes:
+          - CFBundleURLName: com.sakshamrathi.KanbanBoard
+            CFBundleURLSchemes: [internshipkanban]
+    entitlements:
+      path: iOS/KanbanBoard.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sakshamrathi.KanbanBoard
+    settings:
+      base:
+        PRODUCT_NAME: Kanban Board
+        PRODUCT_MODULE_NAME: KanbanBoardiOS
+        PRODUCT_BUNDLE_IDENTIFIER: com.sakshamrathi.KanbanBoard
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_PREVIEWS: YES
+
+  KanbanBoardiOSWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget/Sources
+      - path: iOS/Palette.xcassets
+      - path: Shared
+        excludes: ["UI/**", "Palette.xcassets"]
+    dependencies:
+      - package: KanbanCore
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    info:
+      path: iOS/Widget-Info.plist
+      properties:
+        CFBundleName: Kanban Board
+        CFBundleDisplayName: Kanban Board
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        KanbanAppGroupIdentifier: group.com.sakshamrathi.KanbanBoard
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: iOS/KanbanBoardWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sakshamrathi.KanbanBoard
+    settings:
+      base:
+        PRODUCT_NAME: KanbanBoardWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.sakshamrathi.KanbanBoard.Widget
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        SKIP_INSTALL: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: WidgetBackground
+
+schemes:
+  InternshipKanban:
+    build:
+      targets:
+        InternshipKanban: all
+        InternshipKanbanWidget: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: KanbanCore/KanbanCoreTests
+    archive:
+      config: Release
+  KanbanBoardiOS:
+    build:
+      targets:
+        KanbanBoardiOS: all
+        KanbanBoardiOSWidget: all
+    run:
+      config: Debug
+    archive:
+      config: Release
